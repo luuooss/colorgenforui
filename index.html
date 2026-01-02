@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Générateur de Palette UI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0a;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      background: #18181b;
+      border-radius: 16px;
+      border: 1px solid #27272a;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      padding: 48px;
+      animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 {
+      text-align: center;
+      color: #fafafa;
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 40px;
+      letter-spacing: -0.5px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 18px;
+      font-size: 15px;
+      background: #09090b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      outline: none;
+      font-weight: 500;
+      color: #fafafa;
+    }
+
+    input:focus {
+      border-color: #52525b;
+      background: #0a0a0a;
+    }
+
+    input::placeholder {
+      color: #71717a;
+    }
+
+    button {
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      background: #fafafa;
+      color: #09090b;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    button:hover {
+      background: #e4e4e7;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #exportBtn {
+      background: #09090b;
+      color: #fafafa;
+      border: 1px solid #27272a;
+    }
+
+    #exportBtn:hover {
+      background: #18181b;
+      border-color: #3f3f46;
+    }
+
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .color-box {
+      height: 120px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 16px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .color-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0);
+      transition: all 0.2s ease;
+    }
+
+    .color-box:hover::before {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .color-box:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .color-box span {
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-label {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .color-hex {
+      font-size: 11px;
+      opacity: 0.9;
+      font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+      font-weight: 400;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      padding: 14px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      font-weight: 500;
+      font-size: 14px;
+      color: #fafafa;
+      animation: slideIn 0.3s ease, slideOut 0.3s ease 2.7s;
+      z-index: 1000;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Générateur de Palette UI</h1>
+
+    <div class="controls">
+      <input id="colorInput" type="text" value="#20194D" placeholder="Entrez une couleur hex...">
+      <button onclick="generatePalette()">Générer</button>
+      <button id="exportBtn" onclick="exportPalette()">Exporter PNG</button>
+    </div>
+
+    <div class="palette" id="palette"></div>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+
+  <script>
+    function hexToRgb(hex) {
+      hex = hex.replace("#", "");
+      return {
+        r: parseInt(hex.substr(0, 2), 16),
+        g: parseInt(hex.substr(2, 2), 16),
+        b: parseInt(hex.substr(4, 2), 16)
+      };
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map(v =>
+        v.toString(16).padStart(2, "0")
+      ).join("");
+    }
+
+    function mix(c1, c2, amount) {
+      return Math.round(c1 + (c2 - c1) * amount);
+    }
+
+    function generatePalette() {
+      const baseHex = document.getElementById("colorInput").value;
+      const palette = document.getElementById("palette");
+      palette.innerHTML = "";
+
+      const base = hexToRgb(baseHex);
+
+      const steps = [
+        { label: "950", mix: -0.8 },
+        { label: "900", mix: -0.7 },
+        { label: "850", mix: -0.6 },
+        { label: "800", mix: -0.5 },
+        { label: "750", mix: -0.4 },
+        { label: "700", mix: -0.3 },
+        { label: "650", mix: -0.2 },
+        { label: "600", mix: -0.1 },
+        { label: "550", mix: -0.05 },
+        { label: "500", mix: 0 },
+        { label: "450", mix: 0.1 },
+        { label: "400", mix: 0.2 },
+        { label: "350", mix: 0.3 },
+        { label: "300", mix: 0.4 },
+        { label: "250", mix: 0.5 },
+        { label: "200", mix: 0.6 },
+        { label: "150", mix: 0.7 },
+        { label: "100", mix: 0.8 },
+        { label: "50", mix: 0.9 }
+      ];
+
+      steps.forEach(step => {
+        let r, g, b;
+
+        if (step.mix < 0) {
+          r = mix(base.r, 0, Math.abs(step.mix));
+          g = mix(base.g, 0, Math.abs(step.mix));
+          b = mix(base.b, 0, Math.abs(step.mix));
+        } else {
+          r = mix(base.r, 255, step.mix);
+          g = mix(base.g, 255, step.mix);
+          b = mix(base.b, 255, step.mix);
+        }
+
+        const hex = rgbToHex(r, g, b);
+
+        const box = document.createElement("div");
+        box.className = "color-box";
+        box.style.background = hex;
+        
+        const label = document.createElement("span");
+        label.className = "color-label";
+        label.textContent = step.label;
+        
+        const hexSpan = document.createElement("span");
+        hexSpan.className = "color-hex";
+        hexSpan.textContent = hex;
+        
+        box.appendChild(label);
+        box.appendChild(hexSpan);
+
+        box.onclick = () => {
+          navigator.clipboard.writeText(hex);
+          showNotification("Copié : " + hex);
+        };
+
+        palette.appendChild(box);
+      });
+    }
+
+    function showNotification(message) {
+      const existing = document.querySelector('.notification');
+      if (existing) existing.remove();
+      
+      const notif = document.createElement('div');
+      notif.className = 'notification';
+      notif.textContent = message;
+      document.body.appendChild(notif);
+      
+      setTimeout(() => notif.remove(), 3000);
+    }
+
+    function exportPalette() {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      const boxWidth = 160;
+      const boxHeight = 140;
+      const padding = 16;
+      const cols = 5;
+      const rows = 4;
+      
+      canvas.width = cols * boxWidth + (cols + 1) * padding;
+      canvas.height = rows * boxHeight + (rows + 1) * padding + 80;
+      
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.fillStyle = '#fafafa';
+      ctx.font = '600 22px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Palette de couleurs', canvas.width / 2, 40);
+      
+      const baseHex = document.getElementById("colorInput").value;
+      ctx.font = '14px SF Mono, Monaco, monospace';
+      ctx.fillStyle = '#a1a1aa';
+      ctx.fillText('Couleur de base : ' + baseHex, canvas.width / 2, 65);
+      
+      const boxes = document.querySelectorAll('.color-box');
+      boxes.forEach((box, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = padding + col * (boxWidth + padding);
+        const y = 80 + padding + row * (boxHeight + padding);
+        
+        const color = box.style.background;
+        const label = box.querySelector('.color-label').textContent;
+        const hex = box.querySelector('.color-hex').textContent;
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, boxWidth, boxHeight);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, boxWidth, boxHeight);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '600 20px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x + boxWidth / 2, y + boxHeight / 2 - 5);
+        
+        ctx.font = '12px SF Mono, Monaco, monospace';
+        ctx.fillText(hex, x + boxWidth / 2, y + boxHeight / 2 + 20);
+      });
+      
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'palette-' + baseHex.replace('#', '') + '.png';
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('✓ Palette exportée !');
+      });
+    }
+
+    generatePalette();
+  </script>
+</body>
+</html>
